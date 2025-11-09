@@ -1,5 +1,5 @@
-use crate::error::{RegistryError, Result};
 use crate::config::StorageBackend;
+use crate::error::{RegistryError, Result};
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -87,7 +87,7 @@ impl DiskStorage {
         fs::create_dir_all(path.join("manifests")).await?;
         fs::create_dir_all(path.join("blobs")).await?;
         fs::create_dir_all(path.join("uploads")).await?;
-        
+
         Ok(Self {
             base_path: path,
             _temp_dir: None,
@@ -97,11 +97,11 @@ impl DiskStorage {
     pub async fn temp() -> Result<Self> {
         let temp_dir = tempfile::tempdir()?;
         let path = temp_dir.path().to_path_buf();
-        
+
         fs::create_dir_all(path.join("manifests")).await?;
         fs::create_dir_all(path.join("blobs")).await?;
         fs::create_dir_all(path.join("uploads")).await?;
-        
+
         Ok(Self {
             base_path: path,
             _temp_dir: Some(temp_dir),
@@ -110,12 +110,16 @@ impl DiskStorage {
 
     fn manifest_path(&self, key: &str) -> PathBuf {
         let safe_key = key.replace(['/', ':'], "_");
-        self.base_path.join("manifests").join(format!("{}.json", safe_key))
+        self.base_path
+            .join("manifests")
+            .join(format!("{}.json", safe_key))
     }
 
     fn manifest_meta_path(&self, key: &str) -> PathBuf {
         let safe_key = key.replace(['/', ':'], "_");
-        self.base_path.join("manifests").join(format!("{}.meta", safe_key))
+        self.base_path
+            .join("manifests")
+            .join(format!("{}.meta", safe_key))
     }
 
     fn blob_path(&self, digest: &str) -> PathBuf {
@@ -133,25 +137,26 @@ impl Storage for DiskStorage {
     async fn store_manifest(&self, key: String, entry: ManifestEntry) -> Result<()> {
         let manifest_path = self.manifest_path(&key);
         let meta_path = self.manifest_meta_path(&key);
-        
+
         fs::write(&manifest_path, &entry.data).await?;
         fs::write(&meta_path, &entry.content_type).await?;
-        
+
         Ok(())
     }
 
     async fn get_manifest(&self, key: &str) -> Result<Option<ManifestEntry>> {
         let manifest_path = self.manifest_path(key);
         let meta_path = self.manifest_meta_path(key);
-        
+
         if !manifest_path.exists() {
             return Ok(None);
         }
-        
+
         let data = fs::read(&manifest_path).await?;
-        let content_type = fs::read_to_string(&meta_path).await
+        let content_type = fs::read_to_string(&meta_path)
+            .await
             .unwrap_or_else(|_| "application/vnd.docker.distribution.manifest.v2+json".to_string());
-        
+
         Ok(Some(ManifestEntry { data, content_type }))
     }
 
@@ -163,11 +168,11 @@ impl Storage for DiskStorage {
 
     async fn get_blob(&self, digest: &str) -> Result<Option<Vec<u8>>> {
         let blob_path = self.blob_path(digest);
-        
+
         if !blob_path.exists() {
             return Ok(None);
         }
-        
+
         let data = fs::read(&blob_path).await?;
         Ok(Some(data))
     }
@@ -180,28 +185,28 @@ impl Storage for DiskStorage {
 
     async fn append_upload(&self, uuid: &str, data: &[u8]) -> Result<()> {
         let upload_path = self.upload_path(uuid);
-        
+
         if !upload_path.exists() {
             return Err(RegistryError::UploadNotFound(uuid.to_string()));
         }
-        
+
         let mut existing = fs::read(&upload_path).await?;
         existing.extend_from_slice(data);
         fs::write(&upload_path, &existing).await?;
-        
+
         Ok(())
     }
 
     async fn finish_upload(&self, uuid: &str) -> Result<Option<Vec<u8>>> {
         let upload_path = self.upload_path(uuid);
-        
+
         if !upload_path.exists() {
             return Ok(None);
         }
-        
+
         let data = fs::read(&upload_path).await?;
         fs::remove_file(&upload_path).await?;
-        
+
         Ok(Some(data))
     }
 }

@@ -1,4 +1,6 @@
-use bollard::query_parameters::{CreateImageOptions, ListImagesOptions, PushImageOptions, RemoveImageOptions, TagImageOptions};
+use bollard::query_parameters::{
+    CreateImageOptions, ListImagesOptions, PushImageOptions, RemoveImageOptions, TagImageOptions,
+};
 use bollard::Docker;
 use futures_util::stream::StreamExt;
 use registry_testkit::{RegistryConfig, RegistryServer};
@@ -139,8 +141,7 @@ async fn test_docker_push_pull() {
         .await
         .unwrap();
 
-    let mut push_stream =
-        docker.push_image(&registry_image, None::<PushImageOptions>, None);
+    let mut push_stream = docker.push_image(&registry_image, None::<PushImageOptions>, None);
 
     while let Some(result) = push_stream.next().await {
         let info = result.unwrap();

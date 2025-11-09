@@ -21,7 +21,6 @@ fn strip_leading_slash(s: &str) -> &str {
     s.strip_prefix('/').unwrap_or(s)
 }
 
-
 type SharedStorage = Arc<dyn Storage>;
 
 #[derive(Clone)]
@@ -47,7 +46,7 @@ pub struct RegistryServer {
 impl RegistryServer {
     pub async fn new(config: RegistryConfig) -> Result<Self> {
         let storage = create_storage(&config.storage).await?;
-        
+
         let state = AppState { storage };
 
         let app = Router::new()
@@ -63,7 +62,7 @@ impl RegistryServer {
             .layer(
                 tower::ServiceBuilder::new()
                     .layer(axum::extract::DefaultBodyLimit::max(512 * 1024 * 1024))
-                    .layer(TraceLayer::new_for_http())
+                    .layer(TraceLayer::new_for_http()),
             )
             .with_state(state);
 
@@ -115,10 +114,7 @@ async fn check_blob(
     info!("Checking blob: {}/{}", name, digest);
 
     match state.storage.get_blob(&digest).await {
-        Ok(Some(blob)) => (
-            StatusCode::OK,
-            [("Content-Length", blob.len().to_string())],
-        ),
+        Ok(Some(blob)) => (StatusCode::OK, [("Content-Length", blob.len().to_string())]),
         _ => (StatusCode::NOT_FOUND, [("Content-Length", "0".to_string())]),
     }
 }
@@ -154,10 +150,7 @@ async fn start_upload(
 
     (
         StatusCode::ACCEPTED,
-        [(
-            "Location",
-            format!("/v2/{}/blobs/uploads/{}", name, uuid),
-        )],
+        [("Location", format!("/v2/{}/blobs/uploads/{}", name, uuid))],
     )
 }
 
@@ -237,7 +230,11 @@ async fn finish_upload(
             format!("sha256:{}", hex::encode(hasher.finalize()))
         });
 
-    if let Err(e) = state.storage.store_blob(digest_str.clone(), upload_data).await {
+    if let Err(e) = state
+        .storage
+        .store_blob(digest_str.clone(), upload_data)
+        .await
+    {
         warn!("Failed to store blob: {}", e);
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -302,7 +299,10 @@ async fn put_manifest(
         warn!("Failed to store manifest by digest: {}", e);
     }
 
-    info!("Stored manifest with digest: {} (type: {})", digest, content_type);
+    info!(
+        "Stored manifest with digest: {} (type: {})",
+        digest, content_type
+    );
 
     (
         StatusCode::CREATED,
