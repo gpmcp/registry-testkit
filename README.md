@@ -81,12 +81,6 @@ async fn test_docker_push_pull() {
 - Automatic port selection
 - Compatible with Docker, Podman, and OCI tools
 
-## Running Tests
-
-```bash
-cargo test
-```
-
 ## License
 
 Apache-2.0
