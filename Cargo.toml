@@ -8,6 +8,7 @@ repository = "https://github.com/gpmcp/registry-testkit"
 keywords = ["docker", "registry", "oci", "container", "testing"]
 categories = ["development-tools::testing", "web-programming::http-server"]
 readme = "README.md"
+license = "Apache-2.0"
 
 [dependencies]
 axum = "0.8"
