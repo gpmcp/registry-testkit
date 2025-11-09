@@ -1,3 +1,5 @@
+//! OCI-compliant registry server implementation.
+
 use crate::config::RegistryConfig;
 use crate::error::Result;
 use crate::storage::{create_storage, ManifestEntry, Storage};
@@ -38,12 +40,29 @@ struct UploadParams {
     digest: Option<String>,
 }
 
+/// The main registry server.
+///
+/// Implements an OCI-compliant container registry that can be used for
+/// testing Docker/container workflows.
 pub struct RegistryServer {
     addr: SocketAddr,
     _handle: tokio::task::JoinHandle<()>,
 }
 
 impl RegistryServer {
+    /// Creates and starts a new registry server with the given configuration.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use registry_testkit::{RegistryServer, RegistryConfig};
+    ///
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let config = RegistryConfig::memory();
+    /// let server = RegistryServer::new(config).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn new(config: RegistryConfig) -> Result<Self> {
         let storage = create_storage(&config.storage).await?;
 
@@ -87,14 +106,28 @@ impl RegistryServer {
         })
     }
 
+    /// Returns the socket address the server is bound to.
     pub fn addr(&self) -> SocketAddr {
         self.addr
     }
 
+    /// Returns the full URL of the registry server.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # use registry_testkit::{RegistryServer, RegistryConfig};
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// # let server = RegistryServer::new(RegistryConfig::memory()).await?;
+    /// println!("Registry URL: {}", server.url());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn url(&self) -> String {
         format!("http://{}", self.addr)
     }
 
+    /// Returns the port number the server is listening on.
     pub fn port(&self) -> u16 {
         self.addr.port()
     }
