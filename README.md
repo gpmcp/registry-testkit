@@ -1,112 +1,91 @@
 # registry-testkit
 
-A minimal, OCI-compliant container registry library for testing and development.
-
-## Features
-
-- Docker Registry HTTP API V2 implementation
-- OCI Distribution Specification support
-- Two storage backends: in-memory and filesystem
-- Automatic port selection or manual configuration
-- Zero-copy blob operations
-- Manifest content-type preservation
-- Compatible with Docker, Podman, and other OCI tools
+A minimal, OCI-compliant container registry mock for testing.
 
 ## Usage
 
-### As a Library
+Start a registry in your tests:
 
 ```rust
 use registry_testkit::{RegistryConfig, RegistryServer};
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // In-memory storage with auto port
+#[tokio::test]
+async fn test_docker_operations() {
+    // Start registry with auto-assigned port
     let config = RegistryConfig::memory();
-    let server = RegistryServer::new(config).await?;
-    println!("Registry: {}", server.url());
-
-    // Or with specific port
-    let config = RegistryConfig::memory().with_port(5000);
-    let server = RegistryServer::new(config).await?;
-
-    // Or with filesystem storage
-    let config = RegistryConfig::temp_dir();
-    let server = RegistryServer::new(config).await?;
-
-    Ok(())
+    let server = RegistryServer::new(config).await.unwrap();
+    
+    // Use in your tests
+    let registry_url = server.url();
+    let port = server.port();
+    
+    // Test your Docker/OCI operations
+    // ...
 }
 ```
 
-### Examples
-
-```bash
-# Simple in-memory registry
-cargo run --example simple
-
-# Filesystem-backed registry
-cargo run --example temp_dir
-```
-
-## Testing with Docker
-
-```bash
-# Build and push
-docker build -t localhost:5000/myapp:v1 .
-docker push localhost:5000/myapp:v1
-
-# Pull
-docker pull localhost:5000/myapp:v1
-```
-
-## Testing with Podman
-
-```bash
-# Build and push
-podman build -t localhost:5000/myapp:v1 .
-podman push --tls-verify=false localhost:5000/myapp:v1
-
-# Pull
-podman pull --tls-verify=false localhost:5000/myapp:v1
-```
-
-## API
-
-### `RegistryConfig`
+## Configuration
 
 ```rust
-// Create with in-memory storage
+// In-memory storage (fast, for tests)
 let config = RegistryConfig::memory();
 
-// Create with temp directory storage
+// Filesystem storage (persistent)
 let config = RegistryConfig::temp_dir();
 
-// Set specific port (default: auto-select)
-let config = config.with_port(5000);
+// Custom port
+let config = RegistryConfig::memory().with_port(5000);
 
-// Set host (default: 0.0.0.0)
-let config = config.with_host("127.0.0.1");
+// Custom host
+let config = RegistryConfig::memory().with_host("127.0.0.1");
 ```
 
-### `RegistryServer`
+## Example Tests
+
+See [tests/integration_test.rs](tests/integration_test.rs) for complete examples:
 
 ```rust
-// Create server
-let server = RegistryServer::new(config).await?;
+use bollard::Docker;
+use bollard::image::{PushImageOptions, TagImageOptions};
+use futures_util::stream::StreamExt;
 
-// Get URL
-let url = server.url(); // e.g., "http://0.0.0.0:5000"
-
-// Get port
-let port = server.port(); // e.g., 5000
+#[tokio::test]
+async fn test_docker_push_pull() {
+    let config = RegistryConfig::memory();
+    let server = RegistryServer::new(config).await.unwrap();
+    
+    let docker = Docker::connect_with_local_defaults().unwrap();
+    let registry_image = format!("localhost:{}/test:latest", server.port());
+    
+    // Tag and push
+    docker.tag_image("busybox:latest", Some(TagImageOptions {
+        repo: format!("localhost:{}/test", server.port()),
+        tag: "latest".to_string(),
+    })).await.unwrap();
+    
+    let mut push = docker.push_image(&registry_image, None::<PushImageOptions<String>>, None);
+    while let Some(result) = push.next().await {
+        result.unwrap();
+    }
+    
+    // Now pull from your mock registry
+    // ...
+}
 ```
 
-## Supported Manifest Types
+## Features
 
-- `application/vnd.docker.distribution.manifest.v2+json` (Docker V2)
-- `application/vnd.docker.distribution.manifest.list.v2+json` (Docker Manifest List)
-- `application/vnd.oci.image.manifest.v1+json` (OCI Image Manifest)
-- `application/vnd.oci.image.index.v1+json` (OCI Image Index)
+- Docker Registry HTTP API V2
+- OCI Distribution Specification support
+- In-memory or filesystem storage
+- Automatic port selection
+- Compatible with Docker, Podman, and OCI tools
+
+## Running Tests
+
+```bash
+cargo test
+```
 
 ## License
 

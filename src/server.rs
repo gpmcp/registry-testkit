@@ -60,7 +60,11 @@ impl RegistryServer {
             .route("/v2/{name}/manifests/{reference}", put(put_manifest))
             .route("/v2/{name}/manifests/{reference}", get(get_manifest))
             .route("/v2/{name}/manifests/{reference}", head(check_manifest))
-            .layer(TraceLayer::new_for_http())
+            .layer(
+                tower::ServiceBuilder::new()
+                    .layer(axum::extract::DefaultBodyLimit::max(512 * 1024 * 1024))
+                    .layer(TraceLayer::new_for_http())
+            )
             .with_state(state);
 
         let bind_addr = if let Some(port) = config.port {
