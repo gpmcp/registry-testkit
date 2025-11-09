@@ -1,3 +1,5 @@
+//! Storage backends for registry data.
+
 use crate::config::StorageBackend;
 use crate::error::{RegistryError, Result};
 use async_trait::async_trait;
@@ -7,23 +9,35 @@ use std::sync::Arc;
 use tokio::fs;
 use tokio::sync::RwLock;
 
+/// Container image manifest with metadata.
 #[derive(Clone)]
 pub struct ManifestEntry {
+    /// Raw manifest data.
     pub data: Vec<u8>,
+    /// Content type of the manifest.
     pub content_type: String,
 }
 
+/// Trait for storage backends handling registry data.
 #[async_trait]
 pub trait Storage: Send + Sync {
+    /// Stores a manifest with the given key.
     async fn store_manifest(&self, key: String, entry: ManifestEntry) -> Result<()>;
+    /// Retrieves a manifest by key.
     async fn get_manifest(&self, key: &str) -> Result<Option<ManifestEntry>>;
+    /// Stores a blob with the given digest.
     async fn store_blob(&self, digest: String, data: Vec<u8>) -> Result<()>;
+    /// Retrieves a blob by digest.
     async fn get_blob(&self, digest: &str) -> Result<Option<Vec<u8>>>;
+    /// Creates a new upload session with the given UUID.
     async fn create_upload(&self, uuid: String) -> Result<()>;
+    /// Appends data to an existing upload session.
     async fn append_upload(&self, uuid: &str, data: &[u8]) -> Result<()>;
+    /// Finalizes an upload session and returns the complete data.
     async fn finish_upload(&self, uuid: &str) -> Result<Option<Vec<u8>>>;
 }
 
+/// In-memory storage implementation.
 #[derive(Default)]
 pub struct MemoryStorage {
     manifests: Arc<RwLock<HashMap<String, ManifestEntry>>>,
@@ -32,6 +46,7 @@ pub struct MemoryStorage {
 }
 
 impl MemoryStorage {
+    /// Creates a new in-memory storage backend.
     pub fn new() -> Self {
         Self::default()
     }
@@ -76,12 +91,14 @@ impl Storage for MemoryStorage {
     }
 }
 
+/// Disk-based storage implementation.
 pub struct DiskStorage {
     base_path: PathBuf,
     _temp_dir: Option<tempfile::TempDir>,
 }
 
 impl DiskStorage {
+    /// Creates a new disk storage backend at the specified path.
     pub async fn new(path: PathBuf) -> Result<Self> {
         fs::create_dir_all(&path).await?;
         fs::create_dir_all(path.join("manifests")).await?;
@@ -94,6 +111,7 @@ impl DiskStorage {
         })
     }
 
+    /// Creates a new temporary disk storage backend.
     pub async fn temp() -> Result<Self> {
         let temp_dir = tempfile::tempdir()?;
         let path = temp_dir.path().to_path_buf();
@@ -211,6 +229,7 @@ impl Storage for DiskStorage {
     }
 }
 
+/// Creates a storage backend from the given configuration.
 pub async fn create_storage(backend: &StorageBackend) -> Result<Arc<dyn Storage>> {
     match backend {
         StorageBackend::Memory => Ok(Arc::new(MemoryStorage::new())),
