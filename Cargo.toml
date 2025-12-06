@@ -25,9 +25,11 @@ tempfile = "3"
 thiserror = "2.0.17"
 async-trait = "0.1"
 
+[workspace]
+members = ["ci"]
+
 [dev-dependencies]
 reqwest = { version = "0.12", features = ["json"] }
 bollard = "0.19.4"
 futures-util = "0.3"
 serde_json = "1.0"
-gh-workflow-tailcall = "0.3.0"
