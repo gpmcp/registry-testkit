@@ -17,8 +17,8 @@
 
 name: ci
 env:
-  RUSTFLAGS: -Dwarnings
-on:
+  RUSTFLAGS: '-Dwarnings'
+'on':
   pull_request:
     types:
     - opened
@@ -41,9 +41,28 @@ jobs:
     - name: Setup Rust Toolchain
       uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
-        toolchain: stable
-    - name: Cargo Test
-      run: cargo test --all-features --workspace
+        toolchain: nightly
+        components: llvm-tools-preview
+        cache: 'true'
+    - name: Cache cargo-llvm-cov
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/bin/cargo-llvm-cov
+        key: ${{ runner.os }}-cargo-llvm-cov-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: ${{ runner.os }}-cargo-llvm-cov-
+    - name: Install cargo-llvm-cov
+      run: cargo install cargo-llvm-cov || true
+    - name: Generate coverage
+      run: cargo +nightly llvm-cov --all-features --workspace --lcov --output-path lcov.info
+    - name: Upload Coverage to Codecov
+      uses: Wandalen/wretry.action@v3
+      with:
+        action: codecov/codecov-action@v4
+        attempt_limit: '3'
+        attempt_delay: '10000'
+        with: |-
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: lcov.info
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -72,6 +91,9 @@ jobs:
       contents: write
       pull-requests: write
       packages: write
+    concurrency:
+      group: release-${{github.ref}}
+      cancel-in-progress: false
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
@@ -82,9 +104,6 @@ jobs:
       uses: release-plz/action@v0.5
       with:
         command: release
-    concurrency:
-      group: release-${{github.ref}}
-      cancel-in-progress: false
   release-pr:
     needs:
     - build
@@ -96,6 +115,9 @@ jobs:
       contents: write
       pull-requests: write
       packages: write
+    concurrency:
+      group: release-${{github.ref}}
+      cancel-in-progress: false
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
@@ -106,6 +128,3 @@ jobs:
       uses: release-plz/action@v0.5
       with:
         command: release-pr
-    concurrency:
-      group: release-${{github.ref}}
-      cancel-in-progress: false
