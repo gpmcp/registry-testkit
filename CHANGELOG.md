@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3](https://github.com/gpmcp/registry-testkit/compare/registry-testkit-v0.1.2...registry-testkit-v0.1.3) - 2025-12-08
+
+### Other
+
+- *(ci)* remove accidentally committed build artifacts ([#6](https://github.com/gpmcp/registry-testkit/pull/6))
+
 ## [0.1.2](https://github.com/gpmcp/registry-testkit/compare/v0.1.1...v0.1.2) - 2025-11-09
 
 ### Added
