@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4](https://github.com/gpmcp/registry-testkit/compare/registry-testkit-v0.1.3...registry-testkit-v0.1.4) - 2025-12-11
+
+### Added
+
+- *(ci)* add read permissions to sonarqube job
+
 ## [0.1.3](https://github.com/gpmcp/registry-testkit/compare/registry-testkit-v0.1.2...registry-testkit-v0.1.3) - 2025-12-08
 
 ### Other
